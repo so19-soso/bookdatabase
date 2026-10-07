@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c3a4a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>書籍管理データベース</title>
+<style>
+:root{--bg:#eef2f3;--card:#fff;--ink:#17262c;--sub:#5d6f76;--line:#d3dde0;--main:#1c3a4a;--bun:#c08a1e;--sho:#2b6f8f;--red:#b3372f;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root{--bg:#10191d;--card:#18262c;--ink:#e6eef0;--sub:#92a5ab;--line:#2b3d44;--main:#2b6f8f;--bun:#e0aa3c;--sho:#6fb4d4}}
+*,*:before,*:after{box-sizing:inherit}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Hiragino Sans","Noto Sans JP",sans-serif}
+body{padding-bottom:env(safe-area-inset-bottom,0)}
+header{position:sticky;top:0;z-index:5;background:var(--main);color:#fff;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0)) 12px 10px}
+header h1{font-size:18px;margin:0;flex:1}header button{background:none;border:0;color:#fff;font-size:15px;padding:6px 4px}
+#sync{font-size:11px;opacity:.8}
+main{padding:14px;max-width:640px;margin:0 auto}[hidden]{display:none!important}
+.home{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.home button{text-align:left;background:var(--card);border:1px solid var(--line);border-left:7px solid var(--main);border-radius:6px;padding:14px 12px;font-size:16px;color:var(--ink)}
+.home small{display:block;color:var(--sub);font-size:12px}
+.sub{color:var(--sub);font-size:14px;margin:4px 0 10px}
+label{display:block;font-size:14px;color:var(--sub);margin:12px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px}
+input[type=checkbox]{width:auto}textarea{min-height:80px}
+.btn{font:inherit;border:0;border-radius:6px;padding:12px 16px;background:var(--main);color:#fff}
+.btn.alt{background:var(--card);color:var(--ink);border:1px solid var(--line)}.btn.del{background:var(--red)}
+.r2{display:flex;gap:8px}.r2>*{flex:1}.r2 input{flex:1}
+.item{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;display:flex;gap:10px}
+.cov{width:48px;height:68px;flex:none;background:var(--line);border-left:5px solid var(--sho);border-radius:3px;overflow:hidden}
+.cov img{width:100%;height:100%;object-fit:cover;display:block}
+.tx b{display:block}.tx span{display:block;font-size:13px;color:var(--sub)}
+u{text-decoration:none;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:0 7px;margin:3px 4px 0 0;display:inline-block}
+.empty{text-align:center;color:var(--sub);padding:26px 0}
+.flt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.flt label{margin:0}
+.h3{font-weight:bold;margin:18px 0 6px}
+.br{display:flex;align-items:center;gap:8px;font-size:14px;margin:3px 0}.br span{width:96px;flex:none;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.br i{height:12px;background:var(--sho);border-radius:2px;min-width:2px}.br em{font-style:normal;color:var(--sub)}
+#cv{width:70px;height:100px;object-fit:cover;border-radius:3px;margin-top:10px;display:block}
+#scan{position:fixed;inset:0;background:#000;z-index:20;display:flex;flex-direction:column;color:#fff}
+#scan video{flex:1;min-height:0;width:100%;object-fit:cover}
+#scan p{margin:0;padding:8px 12px;font-size:14px;text-align:center}
+#slog{max-height:26vh;overflow:auto;padding:0 12px;font-size:14px}
+#scan .btn{margin:10px 14px calc(14px + env(safe-area-inset-bottom,0))}
+#sync{cursor:pointer;text-decoration:underline}
+#toast{position:fixed;top:calc(14px + env(safe-area-inset-top,0));left:50%;transform:translateX(-50%);z-index:40;background:#17262c;color:#fff;border:2px solid #6fdc8c;padding:12px 18px;border-radius:8px;max-width:90vw;font-size:15px;text-align:center}
+#res{margin:8px 12px;padding:12px;background:#17262c;border-radius:8px;display:grid;gap:8px}
+.item{border-left:6px solid var(--sho)}
+.item.t{padding:8px 10px;align-items:center;margin-bottom:4px}.item.t b{font-weight:normal;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.tp{font-style:normal;font-size:11px;padding:1px 6px;border-radius:3px;color:#fff;margin-right:6px;flex:none;font-weight:normal}.sh{background:#2b6f8f}.bn{background:#9a6b0a}
+#splash{position:fixed;inset:0;z-index:100;background:#1c3a4a;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:opacity .4s}
+#splash h2{font-size:26px;margin:0 0 18px}#splash p{margin:2px 0;font-size:13px;opacity:.8}
+#back{border:1px solid rgba(255,255,255,.7);border-radius:16px;padding:4px 12px}
+#pop{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}
+#pop div{background:var(--card);color:var(--ink);border-radius:12px;padding:26px 34px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.35);font-size:20px;font-weight:bold}
+#pop small{display:block;font-size:13px;font-weight:normal;color:var(--sub);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="splash"><h2>書籍管理データベース</h2><p>Supported by soso</p><p>Code supported by Claude</p></div>
+<header><button id="back" hidden>🏠 ホーム</button><h1 id="ttl">書籍管理データベース</h1><span id="sync"></span><button id="gear">⚙</button></header>
+<main>
+<section id="home">
+  <p class="sub" id="hc"></p>
+  <div class="home">
+    <button data-go="check" style="grid-column:1/-1;border-left-color:var(--bun)">持ってる?チェック<small>バーコードで蔵書・ほしい本と照合</small></button>
+    <button data-go="stat" style="grid-column:1/-1;border-left-color:var(--sho)">読書ステータス<small>読み始め・既読・状況確認(カメラ)</small></button>
+    <button data-go="add">本を登録<small>1冊ずつ</small></button>
+    <button data-go="multi" style="border-left-color:var(--red)">連続スキャン<small>まとめて登録</small></button>
+    <button data-go="edit" style="border-left-color:var(--bun)">登録データ編集<small>修正・削除</small></button>
+    <button data-go="list" style="border-left-color:var(--sho)">一覧<small>全冊表示</small></button>
+    <button data-go="search">検索<small>絞込・並替</small></button>
+    <button data-go="series" style="border-left-color:var(--bun)">シリーズ<small>抜け巻チェック</small></button>
+    <button data-go="wish" style="border-left-color:var(--red)">ほしい本<small>未購入リスト</small></button>
+    <button data-go="stats" style="border-left-color:var(--sho)">統計<small>冊数・傾向</small></button>
+  </div>
+  <div class="h3">📖 読書中の本</div><div id="rd"></div>
+</section>
+
+<section id="form" hidden>
+  <label style="margin-top:0">所有の有無</label><select id="wish" style="font-weight:bold"><option value="0">所有している</option><option value="1">所有していない(ほしい本リスト)</option></select>
+  <label for="isbn">ISBN</label>
+  <div class="r2"><input id="isbn" inputmode="numeric" placeholder="978から始まる13桁"><button class="btn" id="bScan" style="flex:none">読み取り</button></div>
+  <div class="r2" style="margin-top:8px"><button class="btn alt" id="bLook">ISBNから照合</button></div>
+  <div class="sub" id="st"></div>
+  <img id="cv" alt="" hidden><input id="cover" type="hidden">
+  <label>タイトル</label><input id="title">
+  <label>作者</label><input id="author">
+  <label>出版社</label><input id="publisher">
+  <div class="r2"><div><label>種別</label><select id="type"><option>書籍</option><option>文庫</option></select></div>
+  <div><label>読書状況</label><select id="status"><option>未読</option><option>読書中</option><option>既読</option></select></div></div>
+  <div class="r2"><div><label>シリーズ名</label><input id="series"></div><div style="flex:.5"><label>巻数</label><input id="volume" inputmode="numeric"></div></div>
+  <div class="r2"><div><label>読み始め日時</label><input id="startedAt" placeholder="2026-10-06 21:30"></div><div><label>読了日時</label><input id="finishedAt" placeholder="2026-10-20 22:00"></div></div>
+  <label>タグ(カンマ区切り)</label><input id="tags" placeholder="小説, 技術書">
+  <label>購入日</label><input id="date" type="date">
+  <label>備考</label><textarea id="note"></textarea>
+  
+  <div class="r2" style="margin-top:14px"><button class="btn" id="bSave">保存</button><button class="btn del" id="bDel" hidden>削除</button></div>
+</section>
+
+<section id="edit" hidden><input id="eq" placeholder="タイトルで絞り込み"><div id="eb" style="margin-top:12px"></div></section>
+<section id="list" hidden>
+  <div class="flt"><label>表示<select id="lView"><option value="t">タイトルのみ</option><option value="s">標準</option><option value="d">詳細</option></select></label>
+  <label>所有<select id="lOwn"><option value="0">所有している本</option><option value="1">所有していない本(ほしい本)</option><option value="all">すべて</option></select></label>
+  <label>並び順<select id="lSort"><option value="new">登録が新しい順</option><option value="title">タイトル順</option><option value="type">種別順</option><option value="author">作者順</option></select></label></div>
+  <p class="sub" id="lc"></p><div id="lb"></div></section>
+
+<section id="search" hidden>
+  <input id="q" type="search" placeholder="キーワード(題名・作者・出版社・タグ・シリーズ・備考)">
+  <div class="flt">
+    <label>表示<select id="sView"><option value="t">タイトルのみ</option><option value="s">標準</option><option value="d">詳細</option></select></label><label>所有<select id="fOwn"><option value="0">所有している本</option><option value="1">所有していない本</option><option value="all">すべて</option></select></label>
+    <label>種別<select id="fType"><option value="">すべて</option><option>書籍</option><option>文庫</option></select></label>
+    <label>読書状況<select id="fSt"><option value="">すべて</option><option>未読</option><option>読書中</option><option>既読</option></select></label>
+    <label>出版社<select id="fPub"></select></label>
+    <label>作者<select id="fAu"></select></label>
+    <label>タグ<select id="fTag"></select></label>
+    <label>シリーズ<select id="fSe"></select></label>
+    <label>購入日(以降)<input id="fFrom" type="date"></label>
+    <label>購入日(以前)<input id="fTo" type="date"></label>
+    <label>並べ替え<select id="sKey"><option value="createdAt">登録順</option><option value="title">タイトル</option><option value="author">作者</option><option value="publisher">出版社</option><option value="type">種別</option><option value="status">読書状況</option><option value="series">シリーズ</option><option value="date">購入日</option></select></label>
+    <label>順序<select id="sDir"><option value="1">昇順</option><option value="-1" selected>降順</option></select></label>
+  </div>
+  <p class="sub" id="sc"></p><div id="sb"></div>
+</section>
+
+<section id="stat" hidden><p class="sub">カメラでバーコードを読み取って、読書の状況を記録・確認します。</p>
+<div class="home" style="grid-template-columns:1fr"><button id="sStart" style="border-left-color:var(--bun)">📖 読み始めを登録<small>「読書中」にして開始日時を記録</small></button><button id="sDone" style="border-left-color:var(--sho)">✅ 既読にする<small>読了日時を記録(すでに既読ならお知らせ)</small></button><button id="sCheck" style="border-left-color:var(--red)">🔍 ステータスを確認<small>状況の確認・変更</small></button></div></section>
+<section id="series" hidden><div id="seb"></div></section>
+<section id="wish" hidden><div class="r2" style="margin-bottom:12px"><button class="btn" id="wAdd">＋ 手入力で追加</button><button class="btn" id="wScan">📷 スキャンで追加</button></div><div id="wb"></div></section>
+<section id="stats" hidden><div id="stb"></div></section>
+
+<section id="settings" hidden>
+  <p class="sub">Googleスプレッドシート連携の設定(Apps ScriptのウェブアプリURLと合言葉)</p>
+  <label>ウェブアプリURL</label><input id="gUrl" placeholder="https://script.google.com/macros/s/…/exec">
+  <label>合言葉(Code.gsのTOKEN)</label><input id="gTok">
+  <button class="btn" id="gSave" style="margin-top:14px;width:100%">保存して同期</button>
+  <button class="btn alt" id="gTest" style="margin-top:8px;width:100%">接続テスト</button><div class="sub" id="gMsg"></div>
+</section>
+</main>
+
+<div id="pop" hidden></div>
+<div id="toast" hidden></div>
+<div id="scan" hidden>
+  <video id="vid" playsinline muted></video>
+  <p id="scanMsg">裏表紙の「978」で始まるバーコードを写してください</p>
+  <div id="res" hidden></div>
+  <div id="mbar" hidden><p><label style="margin:0;color:#fff"><input type="checkbox" id="mWish"> ほしい本として登録</label></p><div id="slog"></div></div>
+  <button class="btn alt" id="scanEnd">閉じる</button>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const ls=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}};
+const J=s=>{try{return JSON.parse(s)}catch(e){return null}};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const tagsOf=b=>(b.tags||"").split(/[,、\s]+/).filter(Boolean);
+const norm=b=>({...b,wish:["1","true"].includes(String(b.wish).toLowerCase()),createdAt:Number(b.createdAt)||0,status:b.status||"未読"});
+const T={stat:"読書ステータス",home:"書籍管理データベース",add:"本を登録",edit:"登録データ編集",list:"一覧",search:"検索",series:"シリーズ",wish:"ほしい本",stats:"統計",settings:"設定"};
+let books=(J(ls("books"))||[]).map(norm),q=J(ls("q"))||[],editing=null,cur="home",syncing=false;
+const owned=()=>books.filter(b=>!b.wish);
+const cfg=()=>({url:ls("gas")||"",tok:ls("tok")||""});
+
+/* ---------- 同期(Googleスプレッドシート) ---------- */
+const setSync=t=>$("#sync").textContent=t;
+const cache=()=>{ls("books",JSON.stringify(books));ls("q",JSON.stringify(q))};
+function put(b){const i=books.findIndex(x=>x.id===b.id);i>=0?books[i]=b:books.push(b);q.push({op:"put",book:{...b,wish:b.wish?1:0}});cache();flush()}
+function del(id){books=books.filter(b=>b.id!==id);q.push({op:"del",id});cache();flush()}
+let lastErr="";
+async function api(init,get){
+  const {url,tok}=cfg();let r,t;
+  try{r=await fetch(get?url+(url.includes("?")?"&":"?")+"token="+encodeURIComponent(tok):url,init);t=await r.text()}
+  catch(e){throw new Error("通信できません。URLの末尾が /exec になっているか、アクセス権が「全員」かを確認してください。")}
+  let j;try{j=JSON.parse(t)}catch(e){throw new Error("Google側の応答が不正です(HTTP "+r.status+")。デプロイのアクセス権を「全員」にし、新しいバージョンで再デプロイしてください。")}
+  if(j.error)throw new Error("合言葉が一致しません。Code.gsのTOKENと同じ文字か確認してください。");
+  return j;
+}
+async function flush(){
+  if(!cfg().url){setSync("未連携");return}
+  if(syncing||!q.length)return;syncing=true;setSync("同期中…");
+  try{while(q.length){await api({method:"POST",body:JSON.stringify({token:cfg().tok,...q[0]})});q.shift();ls("q",JSON.stringify(q))}lastErr="";setSync("同期済み")}
+  catch(e){lastErr=e.message;setSync(`未同期${q.length}件 ⚠`)}
+  syncing=false;
+}
+async function pull(){
+  if(!cfg().url)return;await flush();if(q.length)return;
+  try{const j=await api({},true);books=j.books.map(norm);cache();setSync("同期済み");if(!["add","settings"].includes(cur))show(cur)}
+  catch(e){lastErr=e.message;setSync("取得失敗 ⚠")}
+}
+
+/* ---------- 画面遷移 ---------- */
+function show(v){
+  cur=v;["home","form","edit","list","search","series","wish","stats","stat","settings"].forEach(i=>$("#"+i).hidden=true);
+  $("#"+(v==="add"?"form":v)).hidden=false;
+  $("#ttl").textContent=v==="add"&&editing?"本を編集":T[v];$("#back").hidden=v==="home";$("#back").textContent=editing&&v==="add"?"‹ 戻る":"🏠 ホーム";
+  ({home:()=>{$("#hc").textContent=`蔵書 ${owned().length}冊 / ほしい本 ${books.length-owned().length}冊`;fillList($("#rd"),books.filter(b=>!b.wish&&b.status==="読書中").sort((a,b)=>(b.startedAt||"").localeCompare(a.startedAt||"")),"読書中の本はありません。","s")},add:fillForm,edit:rEdit,list:rList,search:rSearch,series:rSeries,wish:rWish,stats:rStats,stat:()=>{},settings:()=>{$("#gUrl").value=cfg().url;$("#gTok").value=cfg().tok}})[v]();
+  scrollTo(0,0);
+}
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{editing=null;const g=b.dataset.go;g==="multi"?multi():g==="check"?check():show(g)});
+$("#back").onclick=()=>{if(editing){const w=editing.wish;editing=null;show(w?"wish":"edit")}else show("home")};
+$("#gear").onclick=()=>{editing=null;show("settings")};
+$("#gSave").onclick=()=>{ls("gas",$("#gUrl").value.trim());ls("tok",$("#gTok").value.trim());show("home");pull()};
+
+let vm=ls("vm")||"s";
+const badge=b=>`<em class="tp ${b.type==="文庫"?"bn":"sh"}">${esc(b.type)}</em>`;
+const itemHTML=(b,m=vm)=>{
+  const sv=b.series?b.series+(b.volume?` ${b.volume}巻`:""):"",c=b.type==="文庫"?"var(--bun)":"var(--sho)",st=b.wish?"所有していない":b.status;
+  const tg=tagsOf(b).map(t=>`<u>${esc(t)}</u>`).join(""),o=`<div class="item${m==="t"?" t":""}" data-id="${b.id}" style="border-left-color:${c}">`;
+  if(m==="t")return o+badge(b)+`<b>${esc(b.title)}</b></div>`;
+  if(m==="d")return o+`<div class="tx"><b>${badge(b)}${esc(b.title)}</b><span>作者:${esc(b.author)}</span><span>出版社:${esc(b.publisher)}</span><span>状況:${esc(st)}${b.startedAt?" ・ 開始 "+esc(b.startedAt):""}${b.finishedAt?" ・ 読了 "+esc(b.finishedAt):""}</span><span>シリーズ:${esc(sv)} ・ 購入日:${esc(b.date)}</span><span>ISBN:${esc(b.isbn)}</span>${tg}<span>${esc(b.note)}</span></div></div>`;
+  return o+`<div class="tx"><b>${badge(b)}${esc(b.title)}</b><span>${esc(b.author)} / ${esc(b.publisher)}</span><span>${esc(st)}${b.status==="読書中"&&b.startedAt&&!b.wish?" ・ 開始 "+esc(b.startedAt):""}${sv?" ・ "+esc(sv):""}${b.date?" ・ "+esc(b.date):""}</span>${tg}</div></div>`};
+function fillList(el,l,msg,m){el.innerHTML=l.length?l.map(x=>itemHTML(x,m)).join(""):`<div class="empty">${msg}</div>`;el.querySelectorAll(".item").forEach(n=>n.onclick=()=>{editing=books.find(b=>b.id===n.dataset.id);show("add")})}
+
+/* ---------- 登録・編集フォーム ---------- */
+const F=["isbn","title","author","publisher","type","status","series","volume","tags","date","note","cover","startedAt","finishedAt"];
+function fillForm(){
+  F.forEach(k=>$("#"+k).value=editing?editing[k]||"":({type:"書籍",status:"未読"}[k]||""));
+  if(!editing)$("#date").value=today();
+  $("#wish").value=editing&&editing.wish?"1":"0";
+  $("#bDel").hidden=!editing;$("#st").textContent="";cover();
+}
+function cover(){$("#cv").hidden=true}
+$("#wAdd").onclick=()=>{editing=null;show("add");$("#wish").value="1";$("#date").value=""};
+$("#bSave").onclick=()=>{
+  const d={};F.forEach(k=>d[k]=$("#"+k).value.trim());d.wish=$("#wish").value==="1";if(!d.wish&&!d.date)d.date=today();
+  if(!d.title){$("#st").textContent="タイトルを入力してください。";return}
+  const dup=d.isbn&&books.find(b=>b.isbn===d.isbn&&(!editing||b.id!==editing.id));
+  if(dup&&!confirm(`同じISBNの本が登録済みです(${dup.wish?"ほしい本":"蔵書"}:${dup.title})。重複して保存しますか?`))return;
+  const was=editing;put(was?{...was,...d}:{id:uid(),createdAt:Date.now(),...d});editing=null;
+  if(was){show(d.wish?"wish":"edit");popup("✅ 保存しました",(d.wish?"ほしい本リスト":"登録データ編集")+"に戻ります")}else{show("home");popup("✅ 保存しました","ホームに戻ります")}
+};
+$("#bDel").onclick=()=>{if(editing&&confirm("削除しますか?")){const w=editing.wish;del(editing.id);editing=null;show(w?"wish":"edit");popup("🗑 削除しました")}};
+
+/* ---------- ISBN照合(openBD → 国立国会図書館) ---------- */
+async function fetchInfo(isbn){
+  let r=null;
+  try{const j=await(await fetch("https://api.openbd.jp/v1/get?isbn="+isbn)).json();const s=j&&j[0]&&j[0].summary;
+    if(s){const d=(j[0].onix||{}).DescriptiveDetail||{},sub=(d.Subject||[]).find(x=>x.SubjectSchemeIdentifier==="78"),f=sub&&String(sub.SubjectCode||"")[1];
+      r={title:s.title,author:s.author,publisher:s.publisher,series:s.series,volume:s.volume,type:f?(f==="1"?"文庫":"書籍"):(d.ProductFormDetail==="B108"?"文庫":undefined)}}}catch(e){}
+  if(!r){try{const x=await(await fetch("https://ndlsearch.ndl.go.jp/api/opensearch?isbn="+isbn)).text();
+    const it=new DOMParser().parseFromString(x,"text/xml").getElementsByTagName("item")[0];
+    if(it){const g=n=>{const e=it.getElementsByTagNameNS("http://purl.org/dc/elements/1.1/",n)[0];return e?e.textContent.trim():""};
+      r={title:g("title"),author:g("creator"),publisher:g("publisher")}}}catch(e){}}
+  if(!r||!r.title)return null;
+  r.cover="";if(!r.type&&/文庫/.test((r.series||"")+r.title+(r.publisher||"")))r.type="文庫";return r;
+}
+async function lookup(){
+  const isbn=$("#isbn").value.replace(/[^0-9Xx]/g,"");if(isbn.length<10){$("#st").textContent="ISBNを入力してください。";return}
+  const dup=books.find(b=>b.isbn===isbn&&(!editing||b.id!==editing.id));
+  $("#st").textContent=(dup?`⚠ 登録済みです(${dup.wish?"ほしい本":"蔵書"}:${dup.title})。`:"")+"照合中…";
+  if(dup)toast("⚠ すでに登録済み:"+dup.title);const i=await fetchInfo(isbn);
+  if(i){["title","author","publisher","series","volume","cover"].forEach(k=>{if(i[k])$("#"+k).value=i[k]});if(i.type)$("#type").value=i.type;cover();
+    $("#st").textContent=(dup?`⚠ 登録済みです(${dup.wish?"ほしい本":"蔵書"}:${dup.title})。`:"")+"情報を取得しました"+(i.type?`(種別:${i.type}を自動設定)`:"")+"。確認して保存してください。";toast("📖 取得:"+i.title)}
+  else{$("#st").textContent="見つかりませんでした。手入力してください。";toast("情報が見つかりませんでした")}
+}
+$("#bLook").onclick=lookup;
+
+/* ---------- バーコード読み取り ---------- */
+let stream=null,reader=null,running=false,onC=null;
+function stopScan(){running=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}if(reader){try{reader.reset()}catch(e){}reader=null}$("#scan").hidden=true}
+$("#scanEnd").onclick=()=>{stopScan();if(cur!=="add")show(cur)};
+async function startScan(cb){
+  onC=c=>{if(/^97[89]\d{10}$/.test(c))cb(c)};$("#scan").hidden=false;running=true;
+  try{
+    if("BarcodeDetector" in window){
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      const v=$("#vid");v.srcObject=stream;await v.play();const det=new BarcodeDetector({formats:["ean_13"]});
+      (async function tick(){if(!running)return;try{const r=await det.detect(v);if(r[0])onC(r[0].rawValue)}catch(e){}if(running)setTimeout(tick,200)})();
+    }else{
+      await new Promise((ok,ng)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";s.onload=ok;s.onerror=ng;document.head.appendChild(s)});
+      reader=new ZXing.BrowserMultiFormatReader();reader.decodeFromVideoDevice(null,"vid",r=>{if(r)onC(r.getText())});
+    }
+  }catch(e){stopScan();alert("カメラを使えませんでした。ISBNまたはタイトルを手入力してください。")}
+}
+$("#bScan").onclick=()=>{$("#mbar").hidden=true;$("#res").hidden=true;$("#scanMsg").hidden=false;$("#scanMsg").textContent="裏表紙の「978」で始まるバーコードを写してください";startScan(c=>{stopScan();vib();toast("✅ 読み取り成功:"+c);$("#isbn").value=c;lookup()})};
+
+/* 連続スキャン:読み取るたびに自動登録(重複はスキップ、ほしい本→蔵書は自動移動) */
+let seen={};
+function multi(w){
+  seen={};$("#slog").innerHTML="";$("#mbar").hidden=false;$("#scanMsg").hidden=true;$("#res").hidden=true;$("#mWish").checked=!!w;
+  const log=t=>toast(t)||$("#slog").insertAdjacentHTML("afterbegin",`<div>${esc(t)}</div>`);
+  startScan(async c=>{
+    const n=Date.now();if(seen[c]&&n-seen[c]<6000)return;seen[c]=n;navigator.vibrate&&navigator.vibrate(80);
+    const wish=$("#mWish").checked,ex=books.find(b=>b.isbn===c);
+    if(ex){if(ex.wish&&!wish){put({...ex,wish:false,date:today()});log("ほしい本→蔵書に移動:"+ex.title)}else log("登録済み:"+ex.title);return}
+    log("✅ 読み取り成功 "+c);const i=await fetchInfo(c)||{};
+    put({id:uid(),createdAt:Date.now(),isbn:c,title:i.title||"(タイトル未取得)",author:i.author||"",publisher:i.publisher||"",type:i.type||"書籍",status:"未読",series:i.series||"",volume:i.volume||"",tags:"",cover:i.cover||"",note:"",date:wish?"":today(),wish});
+    log("登録:"+(i.title||"(タイトル未取得) 後で編集してください"));
+  });
+}
+
+/* ---------- 編集 / 一覧 / ほしい本 ---------- */
+function rEdit(){const k=$("#eq").value.trim().toLowerCase();fillList($("#eb"),books.filter(b=>!k||(b.title||"").toLowerCase().includes(k)),"該当なし");}
+$("#eq").oninput=rEdit;
+const byNew=l=>[...l].sort((a,b)=>b.createdAt-a.createdAt);
+function rList(){
+  $("#lView").value=vm;const o=$("#lOwn").value,k=$("#lSort").value;
+  let l=o==="1"?books.filter(b=>b.wish):o==="all"?books:owned();
+  l=k==="new"?byNew(l):[...l].sort((a,b)=>String(a[k]||"").localeCompare(String(b[k]||""),"ja",{numeric:true}));
+  $("#lc").textContent=l.length+"冊";fillList($("#lb"),l,"該当する本がありません。");
+}
+$("#lView").onchange=()=>{vm=$("#lView").value;ls("vm",vm);rList()};["lOwn","lSort"].forEach(i=>$("#"+i).onchange=rList);
+function rWish(){fillList($("#wb"),byNew(books.filter(b=>b.wish)),"ほしい本はありません。チェックを外して保存すると蔵書に移ります。")}
+
+/* ---------- 検索 ---------- */
+function opts(id,vals){const s=$("#"+id),p=s.value;vals=[...new Set(vals.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));s.innerHTML='<option value="">すべて</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join("");s.value=vals.includes(p)?p:""}
+function rSearch(){$("#sView").value=vm;const o=books;opts("fPub",o.map(b=>b.publisher));opts("fAu",o.map(b=>b.author));opts("fSe",o.map(b=>b.series));opts("fTag",o.flatMap(tagsOf));run()}
+function run(){
+  const k=$("#q").value.trim().toLowerCase(),g=id=>$("#"+id).value,key=g("sKey"),dir=+g("sDir");
+  const own=g("fOwn"),l=(own==="1"?books.filter(b=>b.wish):own==="all"?books:owned()).filter(b=>(!k||[b.title,b.author,b.publisher,b.note,b.isbn,b.series,b.tags].some(x=>(x||"").toLowerCase().includes(k)))&&
+    (!g("fType")||b.type===g("fType"))&&(!g("fSt")||b.status===g("fSt"))&&(!g("fPub")||b.publisher===g("fPub"))&&(!g("fAu")||b.author===g("fAu"))&&
+    (!g("fSe")||b.series===g("fSe"))&&(!g("fTag")||tagsOf(b).includes(g("fTag")))&&(!g("fFrom")||(b.date&&b.date>=g("fFrom")))&&(!g("fTo")||(b.date&&b.date<=g("fTo"))));
+  l.sort((x,y)=>{const A=x[key]??"",B=y[key]??"";if(typeof A==="number")return(A-B)*dir;if(!A&&B)return 1;if(A&&!B)return-1;return String(A).localeCompare(String(B),"ja",{numeric:true})*dir});
+  $("#sc").textContent=l.length+"件";fillList($("#sb"),l,"条件に合う本がありません。");
+}
+["q","fOwn","fType","fSt","fPub","fAu","fSe","fTag","fFrom","fTo","sKey","sDir"].forEach(i=>{$("#"+i).oninput=run;$("#"+i).onchange=run});
+
+/* ---------- シリーズ ---------- */
+function rSeries(){
+  const g={};owned().filter(b=>b.series).forEach(b=>(g[b.series]=g[b.series]||[]).push(b));
+  const h=Object.keys(g).sort((a,b)=>a.localeCompare(b,"ja")).map(n=>{
+    const v=[...new Set(g[n].map(b=>parseInt(b.volume)).filter(x=>x>0))].sort((a,b)=>a-b),max=v.length?v[v.length-1]:0;
+    const miss=[];for(let i=1;i<=max;i++)if(!v.includes(i))miss.push(i);
+    return `<div class="item" data-s="${esc(n)}"><div class="tx"><b>${esc(n)}</b><span>所持 ${g[n].length}冊${v.length?`(${v.join(", ")}巻)`:""}</span><span style="color:${miss.length?"var(--red)":"var(--sub)"}">${miss.length?"抜け:"+miss.join(", ")+"巻":"抜けなし"}</span></div></div>`}).join("");
+  $("#seb").innerHTML=h||'<div class="empty">シリーズ名と巻数を入力すると、ここに抜け巻が表示されます。</div>';
+  $("#seb").querySelectorAll(".item").forEach(n=>n.onclick=()=>{show("search");$("#fSe").value=n.dataset.s;run()});
+}
+
+/* ---------- 統計 ---------- */
+const tally=(a,f)=>{const m={};a.forEach(b=>f(b).forEach(k=>{if(k)m[k]=(m[k]||0)+1}));return Object.entries(m).sort((x,y)=>y[1]-x[1])};
+const bars=r=>{const m=Math.max(1,...r.map(x=>x[1]));return r.map(([k,v])=>`<div class="br"><span>${esc(k)}</span><i style="width:${v/m*60}%"></i><em>${v}</em></div>`).join("")||'<div class="empty">データなし</div>'};
+const PC=["#2b6f8f","#c08a1e","#8a9ba1","#b3372f","#6fb4d4","#9a6b0a"];
+function pie(rows,cols){
+  const t=rows.reduce((x,r)=>x+r[1],0);if(!t)return'<div class="empty">データなし</div>';
+  const col=(k,i)=>(cols&&cols[k])||PC[i%PC.length];let p=0;
+  const g=rows.map(([k,v],i)=>{const s=p;p+=v/t*100;return`${col(k,i)} ${s}% ${p}%`}).join(",");
+  return`<div style="display:flex;align-items:center;gap:18px"><div style="width:120px;height:120px;border-radius:50%;flex:none;background:conic-gradient(${g})"></div><div>${rows.map(([k,v],i)=>`<div style="font-size:14px"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:${col(k,i)}"></i>${esc(k)} ${v}冊(${Math.round(v/t*100)}%)</div>`).join("")}</div></div>`;
+}
+function monthBars(o){
+  const m={};o.forEach(b=>{const k=(b.date||"").slice(0,7);if(k)m[k]=(m[k]||0)+1});
+  const ks=[],d=new Date();d.setDate(1);
+  for(let i=0;i<12;i++){ks.unshift(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));d.setMonth(d.getMonth()-1)}
+  const mx=Math.max(1,...ks.map(k=>m[k]||0));
+  return`<div style="display:flex;align-items:flex-end;gap:3px;height:150px;border-bottom:1px solid var(--line)">${ks.map(k=>{const v=m[k]||0;return`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%"><span style="font-size:11px">${v||""}</span><div style="width:100%;height:${v/mx*120}px;background:var(--sho);border-radius:2px 2px 0 0"></div></div>`}).join("")}</div><div style="display:flex;gap:3px">${ks.map(k=>`<span style="flex:1;font-size:10px;text-align:center;color:var(--sub)">${k.slice(2).replace("-","/")}</span>`).join("")}</div>`;
+}
+function rStats(){
+  const o=owned(),sec=(t,h)=>`<div class="h3">${t}</div>${h}`;
+  $("#stb").innerHTML=`<p class="sub">蔵書 ${o.length}冊 / ほしい本 ${books.length-o.length}冊</p>`+
+    sec("読書状況",pie(tally(o,b=>[b.status]),{未読:"#8a9ba1",読書中:"#c08a1e",既読:"#2b6f8f"}))+
+    sec("種別",pie(tally(o,b=>[b.type]),{書籍:"#2b6f8f",文庫:"#9a6b0a"}))+
+    sec("月別の購入数(直近12か月)",monthBars(o))+
+    sec("タグ 上位5",bars(tally(o,tagsOf).slice(0,5)));
+}
+
+function today(){return new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}
+let pt;function popup(m,sub){const e=$("#pop");e.innerHTML=`<div>${esc(m)}<small>${esc(sub||"")}</small></div>`;e.hidden=false;clearTimeout(pt);pt=setTimeout(()=>e.hidden=true,1600)}
+$("#pop").onclick=()=>$("#pop").hidden=true;
+let tt;function toast(m){const e=$("#toast");e.textContent=m;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,2200)}
+const vib=()=>navigator.vibrate&&navigator.vibrate(80);
+/* 持ってるかチェック:読み取った本が蔵書/ほしい本/未所持かを即表示 */
+function check(){
+  seen={};$("#mbar").hidden=true;$("#scanMsg").hidden=false;$("#scanMsg").textContent="持っているか確認したい本のバーコードを写してください";$("#res").hidden=true;
+  startScan(async c=>{
+    const n=Date.now();if(seen[c]&&n-seen[c]<4000)return;seen[c]=n;vib();toast("✅ 読み取り成功 "+c);
+    const ex=books.find(b=>b.isbn===c);
+    if(ex)return showRes(ex.wish?"wish":"own",ex,c,ex);
+    showRes("wait",{title:"照合中…"},c);const i=await fetchInfo(c)||{};showRes("no",i,c);
+  });
+}
+function showRes(k,t,c,ex){
+  const r=$("#res"),L={own:["✅ 持っています","#6fdc8c"],wish:["⭐ ほしい本に入っています","#ffd166"],no:["❌ 持っていません","#ff8a80"],wait:["…","#fff"]}[k];
+  const sv=t.series?` (${t.series}${t.volume?" "+t.volume+"巻":""})`:"";
+  r.hidden=false;r.innerHTML=`<b style="font-size:20px;color:${L[1]}">${L[0]}</b><div>${esc(t.title||"(タイトル情報なし)")}${esc(sv)}</div><div class="r2"></div>`;
+  const row=r.querySelector(".r2"),btn=(l,w)=>{const b=document.createElement("button");b.className="btn alt";b.textContent=l;b.onclick=()=>{add(w);r.hidden=true};row.appendChild(b)};
+  const add=w=>{put(ex?{...ex,wish:w,date:w?"":today()}:{id:uid(),createdAt:Date.now(),isbn:c,title:t.title||"(タイトル未取得)",author:t.author||"",publisher:t.publisher||"",type:t.type||"書籍",status:"未読",series:t.series||"",volume:t.volume||"",tags:"",cover:t.cover||"",note:"",date:w?"":today(),wish:w});toast(w?"ほしい本に追加しました":"蔵書に追加しました")};
+  if(k==="no"){btn("蔵書に追加",false);btn("ほしい本に追加",true)}
+  if(k==="wish")btn("買った(蔵書に移す)",false);
+}
+$("#wScan").onclick=()=>multi(true);
+$("#sync").onclick=()=>{if(lastErr)alert(lastErr)};
+$("#gTest").onclick=async()=>{ls("gas",$("#gUrl").value.trim());ls("tok",$("#gTok").value.trim());$("#gMsg").textContent="テスト中…";
+  try{const j=await api({},true);$("#gMsg").textContent=`✅ 接続成功(シート上 ${j.books.length}冊)。保存して同期を押してください。`}catch(e){$("#gMsg").textContent="❌ "+e.message}};
+$("#sView").onchange=()=>{vm=$("#sView").value;ls("vm",vm);run()};
+/* 読書ステータス用カメラ */
+const nowStr=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16).replace("T"," ");
+const setSt=(b,st)=>{const n={...b,status:st};if(st==="読書中"){n.startedAt=nowStr();n.finishedAt=""}if(st==="既読")n.finishedAt=nowStr();if(st==="未読"){n.startedAt="";n.finishedAt=""}put(n);return n};
+function stRes(head,col,b,btns){
+  toast(head);const r=$("#res");r.hidden=false;
+  r.innerHTML=`<b style="font-size:20px;color:${col}">${head}</b><div>${esc(b.title||"")}</div><div style="font-size:13px;opacity:.85">${b.status?"状況:"+esc(b.status):""}${b.startedAt?"　開始:"+esc(b.startedAt):""}${b.finishedAt?"　読了:"+esc(b.finishedAt):""}</div><div class="r2"></div>`;
+  const row=r.querySelector(".r2");(btns||[]).forEach(([l,f])=>{const x=document.createElement("button");x.className="btn alt";x.textContent=l;x.onclick=()=>{f();r.hidden=true};row.appendChild(x)});
+}
+function stScan(m){
+  seen={};$("#mbar").hidden=true;$("#scanMsg").hidden=false;$("#res").hidden=true;
+  $("#scanMsg").textContent={start:"読み始める本のバーコードを写してください",done:"読み終えた本のバーコードを写してください",check:"状況を確認する本のバーコードを写してください"}[m];
+  startScan(c=>{
+    const n=Date.now();if(seen[c]&&n-seen[c]<4000)return;seen[c]=n;vib();
+    const b=books.find(x=>x.isbn===c);
+    if(!b)return stRes("❌ 未登録の本です","#ff8a80",{title:"ISBN "+c+"(先に本を登録してください)"});
+    if(b.wish)return stRes("⭐ まだ所有していない本です","#ffd166",b);
+    if(m==="start"){
+      if(b.status==="読書中")return stRes("📖 すでに読書中です","#ffd166",b);
+      if(b.status==="既読")return stRes("✅ すでに既読です","#6fdc8c",b,[["もう一度読み始める",()=>{setSt(b,"読書中");toast("📖 読み始めを記録しました")}]]);
+      return stRes("📖 読み始めを記録しました","#ffd166",setSt(b,"読書中"));
+    }
+    if(m==="done"){
+      if(b.status==="既読")return stRes("✅ すでに既読です","#6fdc8c",b);
+      return stRes("✅ 既読にしました","#6fdc8c",setSt(b,"既読"));
+    }
+    stRes({未読:"📕 未読です",読書中:"📖 読書中です",既読:"✅ 既読です"}[b.status],"#fff",b,["未読","読書中","既読"].filter(x=>x!==b.status).map(x=>["→"+x+"にする",()=>{setSt(b,x);toast(x+"にしました")}]));
+  });
+}
+$("#sStart").onclick=()=>stScan("start");$("#sDone").onclick=()=>stScan("done");$("#sCheck").onclick=()=>stScan("check");
+try{navigator.serviceWorker&&navigator.serviceWorker.register("sw.js")}catch(e){}
+show(cfg().url?"home":"settings");pull();
+setTimeout(()=>{const e=$("#splash");e.style.opacity=0;setTimeout(()=>e.remove(),400)},1000);
+</script>
+</body>
+</html>
